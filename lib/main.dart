@@ -45,6 +45,11 @@ class PortfolioPage extends StatelessWidget {
               qrCodeImage: 'assets/qrcode.png',
               label: 'Tu me scannes ??',
             ),
+
+            const SocialIconsRow(),
+
+            const SizedBox(height: 32),
+            const TechSection(),
           ],
         ),
       ),
@@ -246,7 +251,7 @@ class QrCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Image.asset(qrCodeImage, width: 250),
+          Image.asset(qrCodeImage, width: 180),
           Text(
             label,
             style: const TextStyle(
@@ -299,7 +304,7 @@ class SocialIconsRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          SocialIcon(
+          SocialBox(
             icon: FontAwesomeIcons.flutter,
             gradientColors: const [
               Color(0xFFEA842B),
@@ -307,23 +312,40 @@ class SocialIconsRow extends StatelessWidget {
             ],
             url: 'https://flutter.dev',
           ),
-          SocialIcon(
+          SocialBox(
             icon: FontAwesomeIcons.github,
             gradientColors: const [Color(0xFF333333), Color(0xFF555555)],
             url: 'https://github.com',
           ),
+          SocialBox(
+            icon: FontAwesomeIcons.linkedin,
+            gradientColors: const [
+              Color(0xFF0A66C2),
+              Color(0xFF004182),
+            ],
+            url: 'https://linkedin.com',
+          ),
+          SocialBox(
+            icon: FontAwesomeIcons.twitter,
+            gradientColors: const [
+              Color(0xFF1DA1F2),
+              Color(0xFF0D8DDC),
+            ],
+            url: 'https://twitter.com',
+          ),
+            
         ],
       ),
     );
   }
 }
 
-class SocialIcon extends StatelessWidget {
+class SocialBox extends StatelessWidget {
   final IconData icon;
   final List<Color> gradientColors;
   final String url;
 
-  const SocialIcon({
+  const SocialBox({
     super.key,
     required this.icon,
     required this.gradientColors,
