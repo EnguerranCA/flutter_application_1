@@ -49,7 +49,7 @@ class PortfolioPage extends StatelessWidget {
             const SocialIconsRow(),
 
             const SizedBox(height: 32),
-            const TechSection(),
+            // const TechSection(),
           ],
         ),
       ),
@@ -332,6 +332,14 @@ class SocialIconsRow extends StatelessWidget {
               Color(0xFF0D8DDC),
             ],
             url: 'https://twitter.com',
+          ),
+          SocialBox(
+            icon: FontAwesomeIcons.youtube,
+            gradientColors: const [
+              Color(0xFFFF0000),
+              Color(0xFFCC0000),
+            ],
+            url: 'https://youtube.com',
           ),
             
         ],
