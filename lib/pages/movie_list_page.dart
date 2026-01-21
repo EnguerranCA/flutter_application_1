@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'services/movie_service.dart';
-import 'models/movie.dart';
+import '../services/movie_service.dart';
+import '../models/movie.dart';
 
 class MovieListPage extends StatefulWidget {
   final MovieService movieService;

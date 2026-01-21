@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'movie_list_page.dart';
-import 'service/movie_service.dart';
+import 'services/movie_service.dart';
 
 final movieService = MovieService();
 
