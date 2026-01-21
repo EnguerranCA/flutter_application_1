@@ -13,16 +13,45 @@ class MovieListPage extends StatefulWidget {
 class _MovieListPageState extends State<MovieListPage> {
   List<Movie> movies = [];
   final Set<String> favorites = {};
+  final TextEditingController _searchController = TextEditingController();
+  List<Movie> filteredMovies = [];
+  bool isSearching = false;
 
   @override
   void initState() {
     super.initState();
     _loadMovies();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadMovies() async {
     final loadedMovies = await widget.movieService.loadLocalMovies();
-    setState(() => movies = loadedMovies);
+    setState(() {
+      movies = loadedMovies;
+      filteredMovies = loadedMovies;
+    });
+  }
+
+  void _onSearchChanged() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      isSearching = query.isNotEmpty;
+      if (query.isEmpty) {
+        filteredMovies = movies;
+      } else {
+        filteredMovies = movies.where((movie) {
+          return movie.title.toLowerCase().contains(query) ||
+                 movie.description.toLowerCase().contains(query) ||
+                 movie.year.toString().contains(query);
+        }).toList();
+      }
+    });
   }
 
   void toggleFavorite(String title) {
@@ -38,22 +67,30 @@ class _MovieListPageState extends State<MovieListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0E1117),
+      backgroundColor: const Color(0xFFE8F4F8),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1D29),
-        foregroundColor: Colors.white,
+        backgroundColor: const Color(0xFFE8F4F8),
+        foregroundColor: const Color(0xFF2C5F75),
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.home, size: 28),
+          onPressed: () {
+            // Si on est déjà sur la page principale, on réinitialise la recherche
+            _searchController.clear();
+          },
+        ),
         title: const Text(
           'MMI+ STREAMING',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 24,
             letterSpacing: 1.5,
+            color: Color(0xFF2C5F75),
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.favorite),
+            icon: const Icon(Icons.favorite, size: 28),
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(
@@ -69,21 +106,93 @@ class _MovieListPageState extends State<MovieListPage> {
       ),
       body: movies.isEmpty
           ? const Center(child: CircularProgressIndicator())
-          : GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 0.7,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-
-              ),
-              padding: const EdgeInsets.all(8),
-              itemCount: movies.length,
-              itemBuilder: (context, index) => MovieCard(
-                movie: movies[index],
-                isFavorite: favorites.contains(movies[index].title),
-                onFavoriteTap: () => toggleFavorite(movies[index].title),
-              ),
+          : Column(
+              children: [
+                // Barre de recherche neomorphique
+                Container(
+                  margin: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F4F8),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.white.withOpacity(0.8),
+                        offset: const Offset(-4, -4),
+                        blurRadius: 8,
+                        spreadRadius: 0,
+                      ),
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        offset: const Offset(4, 4),
+                        blurRadius: 8,
+                        spreadRadius: 0,
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    style: const TextStyle(
+                      color: Color(0xFF2C5F75),
+                      fontSize: 16,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Rechercher un film...',
+                      hintStyle: TextStyle(
+                        color: const Color(0xFF2C5F75).withOpacity(0.5),
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        color: Color(0xFF2C5F75),
+                      ),
+                      suffixIcon: isSearching
+                          ? IconButton(
+                              icon: const Icon(
+                                Icons.clear,
+                                color: Color(0xFF2C5F75),
+                              ),
+                              onPressed: () => _searchController.clear(),
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 16,
+                      ),
+                    ),
+                  ),
+                ),
+                // Résultats ou message
+                if (isSearching && filteredMovies.isEmpty)
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        'Aucun film trouvé',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: const Color(0xFF2C5F75).withOpacity(0.6),
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  Expanded(
+                    child: GridView.builder(
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        childAspectRatio: 0.7,
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
+                      ),
+                      padding: const EdgeInsets.all(8),
+                      itemCount: filteredMovies.length,
+                      itemBuilder: (context, index) => MovieCard(
+                        movie: filteredMovies[index],
+                        isFavorite: favorites.contains(filteredMovies[index].title),
+                        onFavoriteTap: () => toggleFavorite(filteredMovies[index].title),
+                      ),
+                    ),
+                  ),
+              ],
             ),
     );
   }
@@ -113,27 +222,45 @@ class _FavoritesPageState extends State<FavoritesPage> {
         .toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0E1117),
+      backgroundColor: const Color(0xFFE8F4F8),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1D29),
+        backgroundColor: const Color(0xFFE8F4F8),
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back,
+            color: Color(0xFF2C5F75),
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text(
-          '❤️ MES FAVORIS',
+          'MES FAVORIS',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 22,
             letterSpacing: 1.2,
+            color: Color(0xFF2C5F75),
           ),
         ),
       ),
       body: favoriteMovies.isEmpty
-          ? const Center(
+          ? Center(
               child: Text(
                 'Aucun favori pour le moment',
-                style: TextStyle(fontSize: 18),
+                style: TextStyle(
+                  fontSize: 18,
+                  color: const Color(0xFF2C5F75).withOpacity(0.6),
+                ),
               ),
             )
-          : ListView.builder(
+          : GridView.builder(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 0.7,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
+              padding: const EdgeInsets.all(8),
               itemCount: favoriteMovies.length,
               itemBuilder: (context, index) => MovieCard(
                 movie: favoriteMovies[index],
@@ -166,102 +293,147 @@ class MovieCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: Stack(
-        children: [
-          // Poster en fond
-          Positioned.fill(
-            child: Image.network(
-              movie.poster,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                color: Colors.grey[800],
-                child: const Icon(Icons.movie, size: 50, color: Colors.grey),
-              ),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFE8F4F8),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.white.withOpacity(0.7),
+              offset: const Offset(-4, -4),
+              blurRadius: 8,
+              spreadRadius: 0,
             ),
-          ),
-          // Gradient overlay
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withOpacity(0.7),
-                    Colors.black.withOpacity(0.95),
-                  ],
-                  stops: const [0.0, 0.6, 1.0],
-                ),
-              ),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              offset: const Offset(4, 4),
+              blurRadius: 8,
+              spreadRadius: 0,
             ),
-          ),
-          // Contenu
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => MovieDetailPage(
-                    movie: movie,
-                    isFavorite: isFavorite,
-                    onFavoriteTap: onFavoriteTap,
+          ],
+        ),
+        child: Stack(
+          children: [
+            // Poster en fond
+            Positioned.fill(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.network(
+                  movie.poster,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    color: Colors.grey[300],
+                    child: const Icon(Icons.movie, size: 50, color: Colors.grey),
                   ),
                 ),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      movie.title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        shadows: [
-                          Shadow(
-                            color: Colors.black,
-                            blurRadius: 8,
-                          ),
-                        ],
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '${movie.year}',
-                          style: TextStyle(
-                            color: Colors.grey[300],
-                            fontSize: 12,
-                          ),
-                        ),
-                        IconButton(
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          icon: Icon(
-                            favoriteIcon ?? (isFavorite ? Icons.favorite : Icons.favorite_border),
-                            color: isFavorite && favoriteIcon == null ? Colors.red : Colors.white,
-                            size: 24,
-                          ),
-                          onPressed: onFavoriteTap,
-                        ),
-                      ],
-                    ),
-                  ],
+            ),
+            // Gradient overlay
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.5),
+                      Colors.black.withOpacity(0.85),
+                    ],
+                    stops: const [0.0, 0.6, 1.0],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+            // Contenu
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MovieDetailPage(
+                      movie: movie,
+                      isFavorite: isFavorite,
+                      onFavoriteTap: onFavoriteTap,
+                    ),
+                  ),
+                ),
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        movie.title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black,
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${movie.year}',
+                            style: TextStyle(
+                              color: Colors.grey[300],
+                              fontSize: 12,
+                            ),
+                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8F4F8),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.white.withOpacity(0.5),
+                                  offset: const Offset(-2, -2),
+                                  blurRadius: 4,
+                                ),
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  offset: const Offset(2, 2),
+                                  blurRadius: 4,
+                                ),
+                              ],
+                            ),
+                            child: IconButton(
+                              padding: const EdgeInsets.all(8),
+                              constraints: const BoxConstraints(),
+                              icon: Icon(
+                                favoriteIcon ?? (isFavorite ? Icons.favorite : Icons.favorite_border),
+                                color: isFavorite && favoriteIcon == null 
+                                    ? Colors.red 
+                                    : const Color(0xFF2C5F75),
+                                size: 20,
+                              ),
+                              onPressed: onFavoriteTap,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -300,19 +472,29 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0E1117),
+      backgroundColor: const Color(0xFFE8F4F8),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1D29),
+        backgroundColor: const Color(0xFFE8F4F8),
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back,
+            color: Color(0xFF2C5F75),
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Text(
           widget.movie.title,
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF2C5F75),
+          ),
         ),
         actions: [
           IconButton(
             icon: Icon(
               isFavorite ? Icons.favorite : Icons.favorite_border,
-              color: isFavorite ? Colors.red : Colors.white,
+              color: isFavorite ? Colors.red : const Color(0xFF2C5F75),
             ),
             onPressed: _toggleFavorite,
           ),
@@ -338,7 +520,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          const Color(0xFF0E1117),
+                          const Color(0xFFE8F4F8),
                         ],
                       ),
                     ),
@@ -353,11 +535,18 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
+                      const Icon(
+                        Icons.calendar_today,
+                        size: 16,
+                        color: Color(0xFF2C5F75),
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         '${widget.movie.year}',
-                        style: const TextStyle(fontSize: 16, color: Colors.grey),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Color(0xFF2C5F75),
+                        ),
                       ),
                     ],
                   ),
@@ -367,16 +556,16 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: Color(0xFF2C5F75),
                     ),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     widget.movie.description,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       height: 1.6,
-                      color: Colors.white70,
+                      color: const Color(0xFF2C5F75).withOpacity(0.8),
                     ),
                   ),
                 ],
