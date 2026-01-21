@@ -17,6 +17,8 @@ class _MovieListPageState extends State<MovieListPage> {
   final TextEditingController _searchController = TextEditingController();
   List<Movie> filteredMovies = [];
   bool isSearching = false;
+  bool isLoading = true;
+  String? errorMessage;
 
   @override
   void initState() {
@@ -32,11 +34,24 @@ class _MovieListPageState extends State<MovieListPage> {
   }
 
   Future<void> _loadMovies() async {
-    final loadedMovies = await widget.movieService.getMovies(limit: 10);
     setState(() {
-      movies = loadedMovies.map((item) => item.toMovie()).toList();
-      filteredMovies = movies;
+      isLoading = true;
+      errorMessage = null;
     });
+
+    try {
+      final loadedMovies = await widget.movieService.getMovies(limit: 10);
+      setState(() {
+        movies = loadedMovies.map((item) => item.toMovie()).toList();
+        filteredMovies = movies;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = e.toString();
+        isLoading = false;
+      });
+    }
   }
 
   void _onSearchChanged() {
@@ -105,9 +120,44 @@ class _MovieListPageState extends State<MovieListPage> {
           ),
         ],
       ),
-      body: movies.isEmpty
+      body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Column(
+          : errorMessage != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        color: Colors.red,
+                        size: 60,
+                      ),
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Text(
+                          errorMessage!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFF2C5F75),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: _loadMovies,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Réessayer'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2C5F75),
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : Column(
               children: [
                 // Barre de recherche neomorphique
                 Container(

@@ -40,6 +40,39 @@ class MovieService {
     }
   }
 
+  // Récupère les détails complets pour plusieurs films (avec images)
+  // Charge les films en PARALLÈLE pour ne pas bloquer l'UI
+  Future<List<Movie>> getMoviesWithDetails({int limit = 10}) async {
+    if (_apiKey.isEmpty) {
+      throw Exception(
+        'Clé API manquante ! Lance l\'app avec --dart-define=WATCHMODE_API_KEY=ta_clé'
+      );
+    }
+
+    try {
+      // Récupérer la liste des IDs
+      final listItems = await getMovies(limit: limit);
+      
+      // Charger les détails de TOUS les films EN PARALLÈLE
+      final movieFutures = listItems.map((item) async {
+        try {
+          return await getMovieDetails(item.id);
+        } catch (e) {
+          // Si un film échoue, on utilise les données de base
+          print('Erreur détails film ${item.id}: $e');
+          return item.toMovie();
+        }
+      }).toList();
+      
+      // Attendre que tous les films soient chargés
+      final movies = await Future.wait(movieFutures);
+      
+      return movies;
+    } catch (e) {
+      throw Exception('Erreur réseau : $e');
+    }
+  }
+
   Future<Movie> getMovieDetails(int movieId) async {
     if (_apiKey.isEmpty) {
       throw Exception(

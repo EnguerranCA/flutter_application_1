@@ -95,17 +95,50 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Image du poster
-                      Image.network(
-                        movie!.posterUrl,
-                        width: double.infinity,
-                        height: 500,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          height: 500,
-                          color: Colors.grey[300],
-                          child: const Icon(Icons.movie, size: 100),
-                        ),
-                      ),
+                      movie!.hasPoster && movie!.posterUrl.isNotEmpty
+                          ? Image.network(
+                              movie!.posterUrl,
+                              width: double.infinity,
+                              height: 500,
+                              fit: BoxFit.cover,
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Container(
+                                  height: 500,
+                                  color: Colors.grey[200],
+                                  child: const Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                );
+                              },
+                              errorBuilder: (_, __, ___) {
+                                print('Erreur chargement image détail: $_');
+                                return Container(
+                                  height: 500,
+                                  color: Colors.grey[300],
+                                  child: const Center(
+                                    child: Icon(Icons.movie, size: 100),
+                                  ),
+                                );
+                              },
+                            )
+                          : Container(
+                              height: 500,
+                              color: Colors.grey[300],
+                              child: const Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.movie_outlined, size: 100, color: Colors.grey),
+                                    SizedBox(height: 16),
+                                    Text(
+                                      'Aucune image disponible',
+                                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                       Padding(
                         padding: const EdgeInsets.all(16),
                         child: Column(

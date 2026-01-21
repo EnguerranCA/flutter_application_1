@@ -10,3 +10,7 @@ Pour cette application j'ai adopté un style de néomorphisme pour styliser les 
 ### 3 - Page de détails
 ![Page de détails](./captures_decran/tp3-full.png)
 
+### Widgets/Packages à tester :
+firebase_auth 
+AnimatedContainer
+shared_preferences

@@ -17,6 +17,8 @@ class _MovieListPageState extends State<MovieListPage> {
   final TextEditingController _searchController = TextEditingController();
   List<Movie> filteredMovies = [];
   bool isSearching = false;
+  bool isLoading = true;
+  String? errorMessage;
 
   @override
   void initState() {
@@ -32,11 +34,25 @@ class _MovieListPageState extends State<MovieListPage> {
   }
 
   Future<void> _loadMovies() async {
-    final loadedMovies = await widget.movieService.getMovies(limit: 10);
     setState(() {
-      movies = loadedMovies.map((item) => item.toMovie()).toList();
-      filteredMovies = movies;
+      isLoading = true;
+      errorMessage = null;
     });
+
+    try {
+      // Utiliser getMoviesWithDetails pour obtenir les films avec images
+      final loadedMovies = await widget.movieService.getMoviesWithDetails(limit: 10);
+      setState(() {
+        movies = loadedMovies;
+        filteredMovies = movies;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = e.toString();
+        isLoading = false;
+      });
+    }
   }
 
   void _onSearchChanged() {
@@ -105,9 +121,44 @@ class _MovieListPageState extends State<MovieListPage> {
           ),
         ],
       ),
-      body: movies.isEmpty
+      body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Column(
+          : errorMessage != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        color: Colors.red,
+                        size: 60,
+                      ),
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Text(
+                          errorMessage!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFF2C5F75),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: _loadMovies,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Réessayer'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2C5F75),
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : Column(
               children: [
                 // Barre de recherche neomorphique
                 Container(
@@ -320,14 +371,55 @@ class MovieCard extends StatelessWidget {
             Positioned.fill(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: Image.network(
-                  movie.posterUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    color: Colors.grey[300],
-                    child: const Icon(Icons.movie, size: 50, color: Colors.grey),
-                  ),
-                ),
+                child: movie.hasPoster && movie.posterUrl.isNotEmpty
+                    ? Image.network(
+                        movie.posterUrl,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
+                            color: const Color(0xFF2C5F75).withOpacity(0.1),
+                            child: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          print('Erreur chargement image: $error');
+                          return Container(
+                            color: const Color(0xFF2C5F75).withOpacity(0.2),
+                            child: const Icon(Icons.movie, size: 50, color: Color(0xFF2C5F75)),
+                          );
+                        },
+                      )
+                    : Container(
+                        color: const Color(0xFF2C5F75).withOpacity(0.2),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.movie_outlined,
+                              size: 60,
+                              color: Color(0xFF2C5F75),
+                            ),
+                            const SizedBox(height: 8),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Text(
+                                movie.title,
+                                textAlign: TextAlign.center,
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Color(0xFF2C5F75),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
               ),
             ),
             // Gradient overlay
@@ -507,12 +599,50 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
           children: [
             Stack(
               children: [
-                Image.network(
-                  widget.movie.posterUrl,
-                  width: double.infinity,
-                  height: 500,
-                  fit: BoxFit.cover,
-                ),
+                widget.movie.hasPoster && widget.movie.posterUrl.isNotEmpty
+                    ? Image.network(
+                        widget.movie.posterUrl,
+                        width: double.infinity,
+                        height: 500,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
+                            height: 500,
+                            color: const Color(0xFFE8F4F8),
+                            child: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          print('Erreur chargement image détail movie_list: $error');
+                          return Container(
+                            height: 500,
+                            color: Colors.grey[300],
+                            child: const Center(
+                              child: Icon(Icons.movie, size: 100),
+                            ),
+                          );
+                        },
+                      )
+                    : Container(
+                        height: 500,
+                        color: Colors.grey[300],
+                        child: const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.movie_outlined, size: 100, color: Colors.grey),
+                              SizedBox(height: 16),
+                              Text(
+                                'Aucune image disponible',
+                                style: TextStyle(fontSize: 16, color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                 Positioned.fill(
                   child: Container(
                     decoration: BoxDecoration(
